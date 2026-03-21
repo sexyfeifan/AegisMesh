@@ -1,4 +1,4 @@
-# AegisMesh（订阅伪装/还原）
+# 🛡️ AegisMesh（订阅伪装/还原）
 
 > 借外站转换能力，不暴露真实节点 endpoint。  
 > 适用于网站转换与 OpenClash 在线转换两种场景。
@@ -10,26 +10,26 @@
 3. 你把伪装后的订阅送到订阅转换网站处理。
 4. 拿到转换后的文件，再用本工具还原成真实地址端口。
 
-## 特点
+## ✨ 特点
 
 - 本地运行，不依赖云端。
 - 防错位：每个节点注入 `NID` 标识，解密时优先按 `NID` 匹配。
 - 兜底匹配：如果转换器改了名字，会回退按假 `host:port` 匹配。
 - 严格模式默认开启，避免漏替换/错还原。
 
-## 支持格式
+## 📦 支持格式
 
 - URI 列表（明文）
 - Base64 包装的 URI 列表（常见机场订阅格式）
 - Clash YAML（需要 PyYAML）
 
-## 安装
+## 🚀 安装
 
 ```bash
 python3 -m pip install -r requirements.txt
 ```
 
-## 图形界面（推荐）
+## 🖥️ 图形界面（推荐）
 
 启动 GUI：
 
@@ -39,7 +39,7 @@ python3 vpn_obfuscator_gui.py
 
 当前版本：`v1.0.6`
 
-## 文档导航
+## 🧭 文档导航
 
 - 使用教程：`USER_GUIDE.md`
 - 项目说明（小红书风格）：`XHS_PROJECT_NOTE.md`
@@ -50,7 +50,7 @@ python3 vpn_obfuscator_gui.py
 - `网站转换流程`：原有文本粘贴式流程。
 - `OpenClash链接流程`：URL -> 伪装上传 OpenList -> 拿假链接去 OpenClash -> 粘贴返回内容 -> 还原。
 
-### 网站转换流程（原流程）
+### ① 网站转换流程（原流程）
 
 1. 大输入框直接粘贴内容（支持 Base64、URI 节点列表、YAML）。
 2. 点击 `提取并展示节点` 查看输入中的节点。
@@ -60,7 +60,7 @@ python3 vpn_obfuscator_gui.py
 6. 点击 `执行还原`，在第 `④ 还原结果` 页查看结果文档。
 7. 点击 `保存还原文档` 一键保存（可选自动上传 OpenList 并复制下载链接）。
 
-### OpenClash 链接流程（新增）
+### ② OpenClash 链接流程（新增）
 
 - OpenClash 模式会优先使用 `clash.meta` / `clash` User-Agent 抓取订阅。
 - 必须拿到完整 Clash YAML 配置后才会继续伪装与上传。
@@ -72,7 +72,7 @@ python3 vpn_obfuscator_gui.py
 4. 将 OpenClash 返回内容粘贴回步骤 `③`，点击 `执行还原`。
 5. 在步骤 `④` 查看并复制/保存还原文档。
 
-额外能力：
+### 🎁 额外能力
 
 1. 默认跳过 HTTPS 证书校验（无需手动设置）。
 2. 自动记录每次完整流程到 `~/.vpn_obfuscator/history/`。
@@ -89,9 +89,9 @@ python3 vpn_obfuscator_gui.py
 13. OpenList 上传改为队列串行处理，支持“一键重试失败上传”。
 14. 顶部新增 `使用说明`，可在软件内直接查看教程与项目说明（内置文档）。
 
-## 用法
+## 🛠️ 用法
 
-### 1) 伪装（encode）
+### 1) 🔐 伪装（encode）
 
 ```bash
 python3 vpn_obfuscator.py encode \
@@ -131,7 +131,7 @@ python3 vpn_obfuscator.py encode \
 - 伪装后的订阅文件（你指定的 `--output`）
 - 映射文件：`~/.vpn_obfuscator/<profile>.mapping.json`
 
-### 2) 还原（decode）
+### 2) 🔓 还原（decode）
 
 ```bash
 python3 vpn_obfuscator.py decode \
@@ -142,7 +142,7 @@ python3 vpn_obfuscator.py decode \
 
 `--profile` 必须和 encode 时一致。
 
-## 推荐实际流程
+## 📋 推荐实际流程
 
 1. `encode` 真实订阅，得到 `encoded.txt`。
 2. 把 `encoded.txt` 提交给订阅转换网站（你提到的站点）。
@@ -150,13 +150,13 @@ python3 vpn_obfuscator.py decode \
 4. `decode` 转换结果，得到 `restored.txt`。
 5. 将 `restored.txt` 导入你的客户端。
 
-## 注意事项
+## ⚠️ 注意事项
 
 - 这个工具不会把映射发到网络；但映射文件本地含真实地址，请保管好。
 - 若你重新执行同一 `profile` 的 encode，会覆盖旧映射；旧转换文件将无法用新映射还原。
 - 如果转换器极端改写节点导致 `NID` 与假地址都丢失，工具会在严格模式下报错阻止错误还原。
 
-## 常见报错：证书校验失败
+## 🧯 常见报错：证书校验失败
 
 如果你看到 `CERTIFICATE_VERIFY_FAILED`：
 
@@ -164,14 +164,14 @@ python3 vpn_obfuscator.py decode \
 2. GUI 里可填写 `CA 证书文件`。
 3. 仅测试时可勾选 GUI 的 `跳过HTTPS证书校验（仅测试）`，或命令行加 `--insecure`。
 
-## 快速自测
+## ✅ 快速自测
 
 ```bash
 python3 vpn_obfuscator.py encode --input-file sample_uri.txt --output encoded.txt --profile t1
 python3 vpn_obfuscator.py decode --input-file encoded.txt --output restored.txt --profile t1
 ```
 
-## 版本发布（保留历史版本）
+## 📦 版本发布（保留历史版本）
 
 1. 修改根目录 `VERSION`（格式 `x.y.z`）。
 2. 执行：
