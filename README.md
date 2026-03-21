@@ -37,7 +37,7 @@ python3 -m pip install -r requirements.txt
 python3 vpn_obfuscator_gui.py
 ```
 
-当前版本：`v1.0.6`
+当前版本：`v1.0.7`
 
 ## 🧭 文档导航
 

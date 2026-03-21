@@ -30,7 +30,7 @@ import vpn_obfuscator as core
 
 
 APP_TITLE = "AegisMesh"
-APP_VERSION = "1.0.6"
+APP_VERSION = "1.0.7"
 APP_TITLE_WITH_VERSION = f"{APP_TITLE} v{APP_VERSION}"
 USER_AGENT = f"{APP_TITLE}/{APP_VERSION}"
 FETCH_USER_AGENT = (
@@ -373,6 +373,12 @@ class App(tk.Tk):
         oc_save_actions = ttk.Frame(step4)
         oc_save_actions.grid(row=2, column=0, sticky="ew", pady=(8, 0))
         ttk.Button(oc_save_actions, text="复制还原文档", command=self._copy_oc_restored).pack(side=tk.LEFT)
+        ttk.Button(
+            oc_save_actions,
+            text="保存并上传到OpenList",
+            command=self._save_oc_restored_and_upload,
+            style="Primary.TButton",
+        ).pack(side=tk.RIGHT, padx=(0, 8))
         ttk.Button(oc_save_actions, text="保存还原文档", command=self._save_oc_restored, style="Primary.TButton").pack(side=tk.RIGHT)
 
     def _build_right(self, parent: ttk.Frame) -> None:
@@ -1111,9 +1117,14 @@ class App(tk.Tk):
             filename=urllib.parse.quote(file_name),
         )
 
-    def _try_upload_to_openlist(self, local_path: Path, status_cb: Callable[[str], None] | None = None) -> str:
+    def _try_upload_to_openlist(
+        self,
+        local_path: Path,
+        status_cb: Callable[[str], None] | None = None,
+        force_upload: bool = False,
+    ) -> str:
         cfg = self.openlist_config
-        if not cfg.enabled:
+        if not cfg.enabled and not force_upload:
             return ""
 
         attempts = max(1, cfg.upload_retry_count + 1)
@@ -1719,7 +1730,7 @@ class App(tk.Tk):
                     continue
         return removed
 
-    def _upload_to_openlist_with_progress(self, local_path: Path) -> str:
+    def _upload_to_openlist_with_progress(self, local_path: Path, force_upload: bool = False) -> str:
         dialog = tk.Toplevel(self)
         dialog.title("OpenList 上传中")
         dialog.transient(self)
@@ -1743,7 +1754,7 @@ class App(tk.Tk):
 
         def worker() -> None:
             try:
-                url = self._try_upload_to_openlist(local_path, status_cb=set_status)
+                url = self._try_upload_to_openlist(local_path, status_cb=set_status, force_upload=force_upload)
                 result["url"] = url
             except Exception as exc:
                 result["error"] = exc
@@ -1819,6 +1830,21 @@ class App(tk.Tk):
                 return candidate
             suffix += 1
 
+    def _next_marked_yaml_save_path(self, marker: str) -> Path:
+        self.save_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d%H%M%S")
+        safe_marker = "".join(ch for ch in marker if ch.isascii() and (ch.isalnum() or ch in {"_", "-"}))
+        safe_marker = safe_marker.strip("_-") or "tag"
+        path = self.save_dir / f"{ts}_{safe_marker}.yaml"
+        if not path.exists():
+            return path
+        suffix = 1
+        while True:
+            candidate = self.save_dir / f"{ts}_{safe_marker}_{suffix:03d}.yaml"
+            if not candidate.exists():
+                return candidate
+            suffix += 1
+
     def _save_yaml_content(self, content: str) -> Path:
         yaml_text = self._prepare_yaml_for_save(content)
         path = self._next_yaml_save_path()
@@ -1855,6 +1881,44 @@ class App(tk.Tk):
         if removed_count > 0:
             self._log(f"[清理] 已清理旧文件: {removed_count} 个")
         messagebox.showinfo("保存成功", f"已保存到:\n{path}")
+
+    def _save_oc_restored_and_upload(self) -> None:
+        if self.oc_restored_text is None:
+            return
+        content = self.oc_restored_text.get("1.0", tk.END).strip()
+        if not content:
+            messagebox.showwarning("无内容", "当前没有可保存的还原文档")
+            return
+
+        if not self._openlist_has_required_fields():
+            should_open = messagebox.askyesno("未配置OpenList", "需要先配置 OpenList 地址/账号/密码，是否现在打开设置？")
+            if should_open:
+                self._open_openlist_settings(wait_for_close=True)
+            if not self._openlist_has_required_fields():
+                messagebox.showwarning("未配置OpenList", "OpenList 配置不完整，已取消上传。")
+                return
+
+        try:
+            yaml_text = self._prepare_yaml_for_save(content)
+            path = self._next_marked_yaml_save_path("ocrestored")
+            path.write_text(yaml_text, encoding="utf-8")
+        except Exception as exc:
+            messagebox.showerror("保存失败", f"无法转换为 YAML: {exc}")
+            return
+
+        self._log(f"[OpenClash流程] 已保存待上传还原文档: {path}")
+        removed_count = self._cleanup_old_saved_files()
+        if removed_count > 0:
+            self._log(f"[清理] 已清理旧文件: {removed_count} 个")
+
+        try:
+            uploaded_url = self._upload_to_openlist_with_progress(path, force_upload=True)
+            if not uploaded_url:
+                raise RuntimeError("上传成功但未返回链接")
+            self._on_openlist_upload_success(path, uploaded_url)
+        except Exception as exc:
+            self._log(f"[OpenClash流程] 上传失败: {exc}")
+            messagebox.showwarning("上传失败", f"文件已保存：\n{path}\n\nOpenList 上传失败：{exc}")
 
     def _save_restored(self) -> None:
         content = self.restored_text.get("1.0", tk.END).strip()

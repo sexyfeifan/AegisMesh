@@ -1,0 +1,6 @@
+name=AegisMesh
+version=1.0.7
+built_at=2026-03-22 05:06:50 +0800
+app=/tmp/AegisMesh-github-clean/releases/AegisMesh-v1.0.7/AegisMesh-v1.0.7-app/AegisMesh.app
+dmg=/tmp/AegisMesh-github-clean/releases/AegisMesh-v1.0.7/AegisMesh-v1.0.7-dmg/AegisMesh-v1.0.7.dmg
+source=/tmp/AegisMesh-github-clean/releases/AegisMesh-v1.0.7/source/AegisMesh-v1.0.7-source.tar.gz
