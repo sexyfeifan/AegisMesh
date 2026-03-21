@@ -1,0 +1,26 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Local build outputs
+build/
+dist/
+
+# Release history (keep only selected release folders when needed)
+releases/legacy/
+releases/v*/
+
+# Local runtime and temporary artifacts
+.DS_Store
+*.log
+*.mapping.json
+encoded*.txt
+encoded*.yaml
+restored*.txt
+restored*.yaml
+pipe_*
+converted_sim.yaml
+
+# Local personal config
+openlist_config.json
+*.swp

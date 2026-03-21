@@ -1,0 +1,13 @@
+proxies:
+  - name: HK-A
+    type: trojan
+    server: hk.example.com
+    port: 443
+    password: p1
+  - name: US-B
+    type: vmess
+    server: 2.2.2.2
+    port: 8443
+    uuid: 11111111-1111-1111-1111-111111111111
+proxy-groups: []
+rules: []

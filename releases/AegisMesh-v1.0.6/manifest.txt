@@ -1,0 +1,6 @@
+name=AegisMesh
+version=1.0.6
+built_at=2026-03-22 04:36:41 +0800
+app=/Users/sexyfeifan/Library/Mobile Documents/com~apple~CloudDocs/Code/vpn/releases/AegisMesh-v1.0.6/AegisMesh-v1.0.6-app/AegisMesh.app
+dmg=/Users/sexyfeifan/Library/Mobile Documents/com~apple~CloudDocs/Code/vpn/releases/AegisMesh-v1.0.6/AegisMesh-v1.0.6-dmg/AegisMesh-v1.0.6.dmg
+source=/Users/sexyfeifan/Library/Mobile Documents/com~apple~CloudDocs/Code/vpn/releases/AegisMesh-v1.0.6/source/AegisMesh-v1.0.6-source.tar.gz
