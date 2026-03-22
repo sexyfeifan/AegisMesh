@@ -50,7 +50,7 @@ python3 vpn_obfuscator_gui.py
 - `网站转换流程`：原有文本粘贴式流程。
 - `OpenClash链接流程`：URL -> 伪装上传 OpenList -> 拿假链接去 OpenClash -> 粘贴返回内容 -> 还原。
 
-### ① 网站转换流程（原流程）
+### ① 网站转换流程
 
 1. 大输入框直接粘贴内容（支持 Base64、URI 节点列表、YAML）。
 2. 点击 `提取并展示节点` 查看输入中的节点。
@@ -60,7 +60,7 @@ python3 vpn_obfuscator_gui.py
 6. 点击 `执行还原`，在第 `④ 还原结果` 页查看结果文档。
 7. 点击 `保存还原文档` 一键保存（可选自动上传 OpenList 并复制下载链接）。
 
-### ② OpenClash 链接流程（新增）
+### ② OpenClash 链接流程
 
 - OpenClash 模式会优先使用 `clash.meta` / `clash` User-Agent 抓取订阅。
 - 必须拿到完整 Clash YAML 配置后才会继续伪装与上传。
@@ -171,7 +171,7 @@ python3 vpn_obfuscator.py encode --input-file sample_uri.txt --output encoded.tx
 python3 vpn_obfuscator.py decode --input-file encoded.txt --output restored.txt --profile t1
 ```
 
-## 📦 版本发布（保留历史版本）
+## 📦 版本发布
 
 1. 修改根目录 `VERSION`（格式 `x.y.z`）。
 2. 执行：
