@@ -39,6 +39,13 @@ python3 vpn_obfuscator_gui.py
 
 当前版本：`v1.0.12`
 
+## ⬇️ 下载（GitHub）
+
+- Releases 页面：<https://github.com/sexyfeifan/AegisMesh/releases>
+- 当前版本目录：`releases/AegisMesh-v1.0.12/`
+- DMG：`releases/AegisMesh-v1.0.12/AegisMesh-v1.0.12-dmg/AegisMesh-v1.0.12.dmg`
+- APP：`releases/AegisMesh-v1.0.12/AegisMesh-v1.0.12-app/AegisMesh.app`
+
 ## 🧭 文档导航
 
 - 使用教程：`USER_GUIDE.md`
