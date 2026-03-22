@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import io
 import json
+import re
 import ssl
 import sys
 import tempfile
@@ -30,9 +31,13 @@ import vpn_obfuscator as core
 
 
 APP_TITLE = "AegisMesh"
-APP_VERSION = "1.0.7"
+APP_VERSION = "1.0.12"
 APP_TITLE_WITH_VERSION = f"{APP_TITLE} v{APP_VERSION}"
 USER_AGENT = f"{APP_TITLE}/{APP_VERSION}"
+PRIMARY_BTN_BG = "#0A84FF"
+PRIMARY_BTN_BG_ACTIVE = "#006AE6"
+PRIMARY_BTN_BG_SELECTED = "#0058C9"
+PRIMARY_BTN_FG = "#FFFFFF"
 FETCH_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -54,9 +59,10 @@ BUILTIN_USER_GUIDE = """AegisMesh 使用说明（内置）
 2) 推荐使用 OpenClash链接流程：输入URL -> 抓取并伪装上传 -> 复制伪装链接 -> 粘贴转换结果 -> 执行还原。
 3) 在步骤④保存还原文档（输出 YAML）。
 
-提示：
-- 每次操作建议先新建会话；
-- 若上传失败，请重试并查看日志窗口中的 OpenList 错误详情。
+当前版本：v1.0.12
+- 主按钮统一蓝色显示；
+- 窗口最小尺寸已固定，防止右侧区域被遮挡；
+- 内置文档已支持阅读态渲染，不显示 Markdown 编辑符号。
 """
 
 
@@ -89,8 +95,8 @@ class App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(APP_TITLE_WITH_VERSION)
-        self.geometry("1220x840")
-        self.minsize(1080, 760)
+        self.geometry("1320x860")
+        self.minsize(1280, 800)
 
         self.session_profile = self._new_profile()
         self.original_content = ""
@@ -134,24 +140,16 @@ class App(tk.Tk):
         self.oc_after_text: scrolledtext.ScrolledText | None = None
         self.oc_converted_text: scrolledtext.ScrolledText | None = None
         self.oc_restored_text: scrolledtext.ScrolledText | None = None
+        self.primary_btn_style: str = "Primary.TButton"
+        self.primary_btn_selected_style: str = "PrimaryActive.TButton"
+        self.main_paned: ttk.Panedwindow | None = None
         self._build_ui()
 
     # ---------------------- UI ----------------------
 
     def _build_ui(self) -> None:
         style = ttk.Style(self)
-        style.configure(
-            "Primary.TButton",
-            foreground="white",
-            background="#0A84FF",
-            padding=(12, 6),
-            focuscolor="none",
-        )
-        style.map(
-            "Primary.TButton",
-            background=[("active", "#006AE6"), ("pressed", "#0058C9"), ("disabled", "#5C5C5C")],
-            foreground=[("disabled", "#E5E5E5")],
-        )
+        self.primary_btn_style = self._resolve_primary_button_style(style)
 
         root = ttk.Frame(self, padding=12)
         root.pack(fill=tk.BOTH, expand=True)
@@ -175,23 +173,67 @@ class App(tk.Tk):
         ttk.Button(session_bar, text="保存目录", command=self._pick_save_dir).pack(side=tk.LEFT, padx=(8, 0))
         ttk.Button(session_bar, text="OpenList设置", command=self._open_openlist_settings).pack(side=tk.LEFT, padx=(8, 0))
         ttk.Button(session_bar, text="使用说明", command=self._open_help_dialog).pack(side=tk.LEFT, padx=(8, 0))
-        self.flow_text_btn = ttk.Button(session_bar, text="网站转换流程", command=lambda: self._switch_flow_mode("text"))
+        self.flow_text_btn = self._create_primary_button(session_bar, text="网站转换流程", command=lambda: self._switch_flow_mode("text"))
         self.flow_text_btn.pack(side=tk.LEFT, padx=(12, 0))
-        self.flow_oc_btn = ttk.Button(session_bar, text="OpenClash链接流程", command=lambda: self._switch_flow_mode("oc"))
+        self.flow_oc_btn = self._create_primary_button(session_bar, text="OpenClash链接流程", command=lambda: self._switch_flow_mode("oc"))
         self.flow_oc_btn.pack(side=tk.LEFT, padx=(8, 0))
 
         # Main split
         main = ttk.Panedwindow(root, orient=tk.HORIZONTAL)
+        self.main_paned = main
         main.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
 
         left = ttk.Frame(main, padding=6)
         right = ttk.Frame(main, padding=6)
         main.add(left, weight=3)
         main.add(right, weight=2)
+        main.bind("<Configure>", self._enforce_paned_min_widths)
 
         self._build_left(left)
         self._build_right(right)
         self._switch_flow_mode("text")
+
+    def _resolve_primary_button_style(self, style: ttk.Style) -> str:
+        try:
+            if style.theme_use() == "aqua":
+                style.theme_use("clam")
+        except Exception:
+            pass
+
+        style.configure(
+            "Primary.TButton",
+            foreground=PRIMARY_BTN_FG,
+            background=PRIMARY_BTN_BG,
+            padding=(12, 6),
+            relief="flat",
+            borderwidth=0,
+            focusthickness=0,
+            focuscolor="none",
+        )
+        style.map(
+            "Primary.TButton",
+            background=[("active", PRIMARY_BTN_BG_ACTIVE), ("pressed", PRIMARY_BTN_BG_SELECTED), ("disabled", "#5C5C5C")],
+            foreground=[("disabled", "#E5E5E5"), ("!disabled", PRIMARY_BTN_FG)],
+        )
+        style.configure(
+            "PrimaryActive.TButton",
+            foreground=PRIMARY_BTN_FG,
+            background=PRIMARY_BTN_BG_SELECTED,
+            padding=(12, 6),
+            relief="flat",
+            borderwidth=0,
+            focusthickness=0,
+            focuscolor="none",
+        )
+        style.map(
+            "PrimaryActive.TButton",
+            background=[("active", PRIMARY_BTN_BG_ACTIVE), ("pressed", PRIMARY_BTN_BG_SELECTED), ("disabled", "#5C5C5C")],
+            foreground=[("disabled", "#E5E5E5"), ("!disabled", PRIMARY_BTN_FG)],
+        )
+        return "Primary.TButton"
+
+    def _create_primary_button(self, parent: tk.Misc, text: str, command: Callable[[], None]) -> ttk.Button:
+        return ttk.Button(parent, text=text, command=command, style=self.primary_btn_style)
 
     def _build_left(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
@@ -240,12 +282,7 @@ class App(tk.Tk):
 
         next_row = ttk.Frame(step1)
         next_row.grid(row=2, column=0, sticky="ew", pady=(8, 0))
-        ttk.Button(
-            next_row,
-            text="提取并展示节点 →",
-            command=self._analyze_input,
-            style="Primary.TButton",
-        ).pack(side=tk.RIGHT)
+        self._create_primary_button(next_row, text="提取并展示节点 →", command=self._analyze_input).pack(side=tk.RIGHT)
 
         # Step 2
         step2.columnconfigure(0, weight=1)
@@ -262,12 +299,7 @@ class App(tk.Tk):
         action_row = ttk.Frame(step2)
         action_row.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 0))
         ttk.Button(action_row, text="执行伪装（默认跳过证书校验）", command=self._run_encode).pack(side=tk.LEFT)
-        ttk.Button(
-            action_row,
-            text="复制伪装后链接到剪贴板",
-            command=self._copy_after_links,
-            style="Primary.TButton",
-        ).pack(side=tk.RIGHT)
+        self._create_primary_button(action_row, text="复制伪装后链接到剪贴板", command=self._copy_after_links).pack(side=tk.RIGHT)
 
         # Step 3
         step3.columnconfigure(0, weight=1)
@@ -279,12 +311,7 @@ class App(tk.Tk):
         restore_actions = ttk.Frame(step3)
         restore_actions.grid(row=2, column=0, sticky="ew", pady=(8, 0))
         ttk.Button(restore_actions, text="从URL抓取转换结果", command=self._fetch_converted_from_url).pack(side=tk.LEFT)
-        ttk.Button(
-            restore_actions,
-            text="执行还原",
-            command=self._run_decode,
-            style="Primary.TButton",
-        ).pack(side=tk.RIGHT)
+        self._create_primary_button(restore_actions, text="执行还原", command=self._run_decode).pack(side=tk.RIGHT)
 
         # Step 4
         step4.columnconfigure(0, weight=1)
@@ -294,7 +321,7 @@ class App(tk.Tk):
         self.restored_text.grid(row=1, column=0, sticky="nsew")
         save_actions = ttk.Frame(step4)
         save_actions.grid(row=2, column=0, sticky="ew", pady=(8, 0))
-        ttk.Button(save_actions, text="保存还原文档", command=self._save_restored, style="Primary.TButton").pack(side=tk.RIGHT)
+        self._create_primary_button(save_actions, text="保存还原文档", command=self._save_restored).pack(side=tk.RIGHT)
 
     def _build_oc_flow(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
@@ -333,7 +360,7 @@ class App(tk.Tk):
 
         step1_actions = ttk.Frame(step1)
         step1_actions.grid(row=3, column=0, sticky="ew", pady=(8, 0))
-        ttk.Button(step1_actions, text="抓取并伪装上传 →", command=self._run_oc_encode_upload, style="Primary.TButton").pack(side=tk.RIGHT)
+        self._create_primary_button(step1_actions, text="抓取并伪装上传 →", command=self._run_oc_encode_upload).pack(side=tk.RIGHT)
 
         # Step 2
         step2.columnconfigure(0, weight=1)
@@ -351,7 +378,7 @@ class App(tk.Tk):
         link_row.columnconfigure(1, weight=1)
         ttk.Label(link_row, text="伪装订阅链接").grid(row=0, column=0, sticky="w")
         ttk.Entry(link_row, textvariable=self.oc_fake_link_var).grid(row=0, column=1, sticky="ew", padx=(8, 8))
-        ttk.Button(link_row, text="复制伪装后链接到剪贴板", command=self._copy_oc_fake_link, style="Primary.TButton").grid(row=0, column=2)
+        self._create_primary_button(link_row, text="复制伪装后链接到剪贴板", command=self._copy_oc_fake_link).grid(row=0, column=2)
 
         # Step 3
         step3.columnconfigure(0, weight=1)
@@ -362,7 +389,7 @@ class App(tk.Tk):
         oc_restore_actions = ttk.Frame(step3)
         oc_restore_actions.grid(row=2, column=0, sticky="ew", pady=(8, 0))
         ttk.Button(oc_restore_actions, text="从URL抓取转换结果", command=self._fetch_oc_converted_from_url).pack(side=tk.LEFT)
-        ttk.Button(oc_restore_actions, text="执行还原", command=self._run_oc_decode, style="Primary.TButton").pack(side=tk.RIGHT)
+        self._create_primary_button(oc_restore_actions, text="执行还原", command=self._run_oc_decode).pack(side=tk.RIGHT)
 
         # Step 4
         step4.columnconfigure(0, weight=1)
@@ -373,13 +400,8 @@ class App(tk.Tk):
         oc_save_actions = ttk.Frame(step4)
         oc_save_actions.grid(row=2, column=0, sticky="ew", pady=(8, 0))
         ttk.Button(oc_save_actions, text="复制还原文档", command=self._copy_oc_restored).pack(side=tk.LEFT)
-        ttk.Button(
-            oc_save_actions,
-            text="保存并上传到OpenList",
-            command=self._save_oc_restored_and_upload,
-            style="Primary.TButton",
-        ).pack(side=tk.RIGHT, padx=(0, 8))
-        ttk.Button(oc_save_actions, text="保存还原文档", command=self._save_oc_restored, style="Primary.TButton").pack(side=tk.RIGHT)
+        self._create_primary_button(oc_save_actions, text="保存并上传到OpenList", command=self._save_oc_restored_and_upload).pack(side=tk.RIGHT, padx=(0, 8))
+        self._create_primary_button(oc_save_actions, text="保存还原文档", command=self._save_oc_restored).pack(side=tk.RIGHT)
 
     def _build_right(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
@@ -410,11 +432,14 @@ class App(tk.Tk):
 
         btn_row = ttk.Frame(parent)
         btn_row.grid(row=2, column=0, sticky="ew", pady=(8, 0))
-        ttk.Button(btn_row, text="导出验证详情", command=self._export_validation_detail).pack(side=tk.LEFT)
-        ttk.Button(btn_row, text="重试失败上传", command=self._retry_failed_uploads).pack(side=tk.LEFT, padx=(8, 0))
-        ttk.Button(btn_row, text="清空验证", command=lambda: self.validation_text.delete("1.0", tk.END)).pack(side=tk.LEFT, padx=(8, 0))
-        ttk.Button(btn_row, text="清空日志", command=lambda: self.log_text.delete("1.0", tk.END)).pack(side=tk.LEFT)
-        ttk.Button(btn_row, text="退出", command=self.destroy).pack(side=tk.RIGHT)
+        btn_row.columnconfigure(0, weight=1)
+        btn_row.columnconfigure(1, weight=1)
+        btn_row.columnconfigure(2, weight=1)
+        ttk.Button(btn_row, text="导出验证详情", command=self._export_validation_detail).grid(row=0, column=0, sticky="ew")
+        ttk.Button(btn_row, text="重试失败上传", command=self._retry_failed_uploads).grid(row=0, column=1, sticky="ew", padx=(8, 8))
+        ttk.Button(btn_row, text="清空验证", command=lambda: self.validation_text.delete("1.0", tk.END)).grid(row=0, column=2, sticky="ew")
+        ttk.Button(btn_row, text="清空日志", command=lambda: self.log_text.delete("1.0", tk.END)).grid(row=1, column=1, sticky="ew", pady=(8, 0))
+        ttk.Button(btn_row, text="退出", command=self.destroy).grid(row=1, column=2, sticky="ew", pady=(8, 0))
 
     # ---------------------- helpers ----------------------
 
@@ -446,12 +471,10 @@ class App(tk.Tk):
         wrap = ttk.Frame(dialog, padding=10)
         wrap.pack(fill=tk.BOTH, expand=True)
         wrap.columnconfigure(0, weight=1)
-        wrap.rowconfigure(1, weight=1)
-
-        ttk.Label(wrap, text="内置文档（可直接复制到 GitHub）", font=("PingFang SC", 12, "bold")).grid(row=0, column=0, sticky="w")
+        wrap.rowconfigure(0, weight=1)
 
         tabs = ttk.Notebook(wrap)
-        tabs.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+        tabs.grid(row=0, column=0, sticky="nsew")
 
         usage_tab = ttk.Frame(tabs, padding=8)
         note_tab = ttk.Frame(tabs, padding=8)
@@ -465,17 +488,95 @@ class App(tk.Tk):
 
         usage_text = scrolledtext.ScrolledText(usage_tab, wrap=tk.WORD)
         usage_text.grid(row=0, column=0, sticky="nsew")
-        usage_text.insert("1.0", self._load_embedded_doc("USER_GUIDE.md", BUILTIN_USER_GUIDE))
-        usage_text.configure(state=tk.DISABLED)
+        usage_doc = self._load_embedded_doc("USER_GUIDE.md", BUILTIN_USER_GUIDE)
+        self._render_markdown_doc(usage_text, usage_doc)
 
         note_text = scrolledtext.ScrolledText(note_tab, wrap=tk.WORD)
         note_text.grid(row=0, column=0, sticky="nsew")
-        note_text.insert("1.0", self._load_embedded_doc("XHS_PROJECT_NOTE.md", "项目说明文档未找到。"))
-        note_text.configure(state=tk.DISABLED)
+        note_doc = self._load_embedded_doc("XHS_PROJECT_NOTE.md", "项目说明文档未找到。")
+        self._render_markdown_doc(note_text, note_doc)
 
         btns = ttk.Frame(wrap)
-        btns.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        btns.grid(row=1, column=0, sticky="ew", pady=(8, 0))
         ttk.Button(btns, text="关闭", command=dialog.destroy).pack(side=tk.RIGHT)
+
+    def _setup_markdown_tags(self, widget: scrolledtext.ScrolledText) -> None:
+        widget.tag_configure("md_h1", font=("PingFang SC", 16, "bold"), spacing1=10, spacing3=6)
+        widget.tag_configure("md_h2", font=("PingFang SC", 14, "bold"), spacing1=8, spacing3=5)
+        widget.tag_configure("md_h3", font=("PingFang SC", 13, "bold"), spacing1=6, spacing3=4)
+        widget.tag_configure("md_body", font=("PingFang SC", 12), spacing1=1, spacing3=1)
+        widget.tag_configure("md_list", font=("PingFang SC", 12), lmargin1=12, lmargin2=24, spacing1=1, spacing3=1)
+        widget.tag_configure("md_quote", font=("PingFang SC", 12), foreground="#5a5a5a", lmargin1=16, lmargin2=24, spacing1=1, spacing3=1)
+        widget.tag_configure("md_code", font=("Menlo", 11), background="#1f1f1f", foreground="#eaeaea", lmargin1=12, lmargin2=12, spacing1=2, spacing3=2)
+
+    def _strip_markdown_inline(self, text: str) -> str:
+        cleaned = text.strip()
+        cleaned = re.sub(r"!\[([^\]]*)\]\(([^)]*)\)", r"\1", cleaned)
+        cleaned = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", cleaned)
+        cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
+        cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", cleaned)
+        cleaned = re.sub(r"__([^_]+)__", r"\1", cleaned)
+        cleaned = re.sub(r"\*([^*]+)\*", r"\1", cleaned)
+        cleaned = re.sub(r"_([^_]+)_", r"\1", cleaned)
+        cleaned = re.sub(r"~~([^~]+)~~", r"\1", cleaned)
+        return cleaned.strip()
+
+    def _render_markdown_doc(self, widget: scrolledtext.ScrolledText, markdown_text: str) -> None:
+        widget.configure(state=tk.NORMAL)
+        widget.delete("1.0", tk.END)
+        self._setup_markdown_tags(widget)
+
+        in_code_block = False
+        for raw_line in markdown_text.splitlines():
+            line = raw_line.rstrip("\n")
+            stripped = line.strip()
+
+            if stripped.startswith("```"):
+                in_code_block = not in_code_block
+                if not in_code_block:
+                    widget.insert(tk.END, "\n")
+                continue
+
+            if in_code_block:
+                widget.insert(tk.END, f"{line}\n", "md_code")
+                continue
+
+            if not stripped:
+                widget.insert(tk.END, "\n")
+                continue
+
+            if re.fullmatch(r"[-*_]{3,}", stripped):
+                widget.insert(tk.END, "\n")
+                continue
+
+            heading_match = re.match(r"^(#{1,6})\s+(.+)$", stripped)
+            if heading_match:
+                level = min(len(heading_match.group(1)), 3)
+                heading_text = self._strip_markdown_inline(heading_match.group(2))
+                widget.insert(tk.END, f"{heading_text}\n", f"md_h{level}")
+                continue
+
+            if stripped.startswith(">"):
+                quote_text = self._strip_markdown_inline(stripped.lstrip(">").strip())
+                widget.insert(tk.END, f"{quote_text}\n", "md_quote")
+                continue
+
+            unordered_match = re.match(r"^[-*+]\s+(.+)$", stripped)
+            if unordered_match:
+                list_text = self._strip_markdown_inline(unordered_match.group(1))
+                widget.insert(tk.END, f"• {list_text}\n", "md_list")
+                continue
+
+            ordered_match = re.match(r"^(\d+)[\.\)]\s+(.+)$", stripped)
+            if ordered_match:
+                list_text = self._strip_markdown_inline(ordered_match.group(2))
+                widget.insert(tk.END, f"{ordered_match.group(1)}. {list_text}\n", "md_list")
+                continue
+
+            body_text = self._strip_markdown_inline(line)
+            widget.insert(tk.END, f"{body_text}\n", "md_body")
+
+        widget.configure(state=tk.DISABLED)
 
     def _log(self, msg: str) -> None:
         self.log_text.insert(tk.END, msg + "\n")
@@ -507,17 +608,37 @@ class App(tk.Tk):
         if target == "oc":
             if self.oc_flow_frame is not None:
                 self.oc_flow_frame.tkraise()
-            self.flow_oc_btn.configure(style="Primary.TButton")
-            self.flow_text_btn.configure(style="TButton")
+            self.flow_oc_btn.configure(style=self.primary_btn_selected_style)
+            self.flow_text_btn.configure(style=self.primary_btn_style)
             self.status_var.set("OpenClash链接流程")
             self._goto_oc_step(0)
         else:
             if self.text_flow_frame is not None:
                 self.text_flow_frame.tkraise()
-            self.flow_text_btn.configure(style="Primary.TButton")
-            self.flow_oc_btn.configure(style="TButton")
+            self.flow_text_btn.configure(style=self.primary_btn_selected_style)
+            self.flow_oc_btn.configure(style=self.primary_btn_style)
             self.status_var.set("网站转换流程")
             self._goto_step(0)
+
+    def _enforce_paned_min_widths(self, _event: tk.Event | None = None) -> None:
+        if self.main_paned is None:
+            return
+        try:
+            total_width = self.main_paned.winfo_width()
+            if total_width <= 0:
+                return
+            min_left_width = 640
+            min_right_width = 460
+            sash_min = min_left_width
+            sash_max = total_width - min_right_width
+            if sash_max <= sash_min:
+                return
+            current = self.main_paned.sashpos(0)
+            target = min(max(current, sash_min), sash_max)
+            if target != current:
+                self.main_paned.sashpos(0, target)
+        except Exception:
+            return
 
     def _load_openlist_config(self) -> OpenListConfig:
         try:

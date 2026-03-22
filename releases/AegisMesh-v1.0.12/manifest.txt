@@ -1,0 +1,6 @@
+name=AegisMesh
+version=1.0.12
+built_at=2026-03-23 03:30:31 +0800
+app=/Users/sexyfeifan/Library/Mobile Documents/com~apple~CloudDocs/Code/AegisMesh/releases/AegisMesh-v1.0.12/AegisMesh-v1.0.12-app/AegisMesh.app
+dmg=/Users/sexyfeifan/Library/Mobile Documents/com~apple~CloudDocs/Code/AegisMesh/releases/AegisMesh-v1.0.12/AegisMesh-v1.0.12-dmg/AegisMesh-v1.0.12.dmg
+source=/Users/sexyfeifan/Library/Mobile Documents/com~apple~CloudDocs/Code/AegisMesh/releases/AegisMesh-v1.0.12/source/AegisMesh-v1.0.12-source.tar.gz

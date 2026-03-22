@@ -13,8 +13,8 @@
 ## ✨ 特点
 
 - 本地运行，不依赖云端。
-- 防错位：每个节点注入 `NID` 标识，解密时优先按 `NID` 匹配。
-- 兜底匹配：如果转换器改了名字，会回退按假 `host:port` 匹配。
+- 防错位：默认不注入 `NID`（避免分组干扰），但可通过 `--inject-nid` 开启并优先按 `NID` 匹配。
+- 兜底匹配：如果转换器改了名字，会回退按假 `host:port` 匹配；若外站已回填真实地址，也可按真实 `host:port` 命中。
 - 严格模式默认开启，避免漏替换/错还原。
 
 ## 📦 支持格式
@@ -37,7 +37,7 @@ python3 -m pip install -r requirements.txt
 python3 vpn_obfuscator_gui.py
 ```
 
-当前版本：`v1.0.7`
+当前版本：`v1.0.12`
 
 ## 🧭 文档导航
 
@@ -74,7 +74,7 @@ python3 vpn_obfuscator_gui.py
 
 ### 🎁 额外能力
 
-1. 默认跳过 HTTPS 证书校验（无需手动设置）。
+1. GUI 抓取/上传默认按当前场景做证书兼容（无需手动设置）。
 2. 自动记录每次完整流程到 `~/.vpn_obfuscator/history/`。
 3. 自动执行一次性验证，并在“执行验证窗口”展示结果。
 4. 保存还原文档时自动输出 YAML，文件名为 `YYYYMMDDHHMMSSmmm.yaml`（毫秒级，无中文和特殊符号）。
@@ -123,6 +123,7 @@ python3 vpn_obfuscator.py encode \
 - `--fake-suffix mask.invalid`：假域名后缀。
 - `--no-strict`：关闭严格模式（不建议）。
 - `--mapping-dir ~/.vpn_obfuscator`：映射目录。
+- `--inject-nid`：将 `NID` 注入节点名（默认关闭，减少转换站侧分组干扰）。
 - `--ca-file /path/to/ca.pem`：指定自定义 CA 证书（PEM）。
 - `--insecure`：跳过 HTTPS 证书校验（仅测试，不建议长期使用）。
 
@@ -154,21 +155,27 @@ python3 vpn_obfuscator.py decode \
 
 - 这个工具不会把映射发到网络；但映射文件本地含真实地址，请保管好。
 - 若你重新执行同一 `profile` 的 encode，会覆盖旧映射；旧转换文件将无法用新映射还原。
-- 如果转换器极端改写节点导致 `NID` 与假地址都丢失，工具会在严格模式下报错阻止错误还原。
+- 如果转换器极端改写节点导致 `NID`、假地址与真实地址线索都无法匹配，工具会在严格模式下报错阻止错误还原。
 
 ## 🧯 常见报错：证书校验失败
 
 如果你看到 `CERTIFICATE_VERIFY_FAILED`：
 
-1. 优先方案：安装系统/企业根证书，或用 `--ca-file` 指定 CA 证书。
-2. GUI 里可填写 `CA 证书文件`。
-3. 仅测试时可勾选 GUI 的 `跳过HTTPS证书校验（仅测试）`，或命令行加 `--insecure`。
+1. CLI 优先方案：安装系统/企业根证书，或用 `--ca-file` 指定 CA 证书。
+2. GUI 抓取/上传默认按当前场景做证书兼容（必要时自动忽略校验并重试）。
+3. OpenList 设置里可勾选 `严格校验证书`；若校验失败，程序会记录日志并自动回退重试。
 
 ## ✅ 快速自测
 
 ```bash
 python3 vpn_obfuscator.py encode --input-file sample_uri.txt --output encoded.txt --profile t1
 python3 vpn_obfuscator.py decode --input-file encoded.txt --output restored.txt --profile t1
+```
+
+回归测试（URI / Base64 URI / Clash YAML）：
+
+```bash
+python3 -m unittest discover -s tests -v
 ```
 
 ## 📦 版本发布
